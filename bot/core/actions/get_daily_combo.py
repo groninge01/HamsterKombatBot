@@ -24,7 +24,7 @@ async def get_daily_combo_significance(bot: Tapper, combo: list[str]) -> float:
     welcome_coins = 0
 
     for upgrade in bot.upgrades:
-        if upgrade in combo:
+        if upgrade.id in combo:
             total_price += upgrade.price
             total_earn += upgrade.earn_per_hour
             welcome_coins += upgrade.welcome_coins
