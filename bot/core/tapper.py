@@ -88,7 +88,7 @@ class Tapper:
 
             # pylint: disable=C0415
             from bot.core.actions.get_daily_combo import get_daily_combo
-            if not get_daily_combo(self, most_profit_upgrade):
+            if not await get_daily_combo(self, most_profit_upgrade):
                 break
 
             if most_profit_upgrade.price > self.profile.get_spending_balance():
