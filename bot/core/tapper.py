@@ -2,7 +2,6 @@
 
 import asyncio
 import base64
-import datetime
 import traceback
 from random import randint
 from time import time
@@ -66,12 +65,13 @@ class Tapper:
             if reward_claimed:
                 return False
 
-            combo = await fetch_daily_combo()
+            combo = await self.web_client.fetch_daily_combo()
             if len(combo) == 0:
                 logger.info(f"{self.session_name} | Daily combo not published")
                 return False
             combo_upgrades: list[Upgrade] = list(
-                filter(lambda u: u.id in combo and u.id not in self.daily_combo.upgrade_ids, self.upgrades))
+                filter(lambda u: u.id in combo and u.id not in self.daily_combo.upgrade_ids, self.upgrades)
+            )
 
             for upgrade in combo_upgrades:
                 if not upgrade.can_upgrade():
@@ -111,10 +111,19 @@ class Tapper:
             if not settings.WAIT_FOR_MOST_PROFIT_UPGRADES:
                 available_upgrades = filter(
                     lambda u: self.profile.get_spending_balance() > u.price and u.cooldown_seconds == 0,
-                    available_upgrades)
+                    available_upgrades
+                )
 
-            available_upgrades = sorted(available_upgrades, key=lambda u: u.calculate_significance(self.profile),
-                                        reverse=False)
+            available_upgrades = sorted(
+                available_upgrades, key=lambda u: u.calculate_significance(self.profile), reverse=False
+            )
+
+            # тут мы получили полный отсортированный список апгрейдов
+            # из него берем топ 10 апгрейтов, которые мы в принципе рассматриваем для обновления(остальные условно считаем не выгодные)
+            # далее из этого списка мы получаем только те апгрейды, которые еще "не раздутые", чтобы не завышать цену еще больше.
+            # это нужно для высоких левелов, когда карточки уже очень дорогие и мы хотим состедоточиться на накоплении баланса,
+            # но так же хотим апать новые, выгодные карточки, которые недавно открылись.
+            available_upgrades = list(filter(lambda u: u.level < settings.MAX_UPGRADE_LEVEL, available_upgrades[:10]))
 
             if len(available_upgrades) == 0:
                 logger.info(f"{self.session_name} | No available upgrades")
@@ -301,22 +310,3 @@ async def run_tapper(client: Client, proxy: str | None):
             await Tapper(web_client=web_client).run()
     except InvalidSession:
         logger.error(f"{client.name} | Invalid Session")
-
-
-DAILY_JSON_URL = "https://anisovaleksey.github.io/HamsterKombatBot/daily_combo.json"
-
-
-async def fetch_daily_combo() -> list[str]:
-    async with aiohttp.ClientSession() as http_client:
-        response = await http_client.get(url=DAILY_JSON_URL)
-        response_json = await response.json()
-        combo = response_json.get('combo')
-        start_combo_date = datetime.datetime \
-            .strptime(response_json.get('date'), "%Y-%m-%d") \
-            .replace(tzinfo=datetime.timezone.utc).replace(hour=12)
-        end_combo_date = start_combo_date + datetime.timedelta(days=1)
-        current_timestamp = time()
-
-        if start_combo_date.timestamp() < current_timestamp < end_combo_date.timestamp():
-            return combo
-        return []
