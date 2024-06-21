@@ -10,7 +10,6 @@ import aiohttp
 from aiohttp_proxy import ProxyConnector
 
 from bot.config import settings
-from bot.core.actions.get_daily_combo import get_daily_combo
 from bot.core.entities import Upgrade, Profile, Boost, Task, Config, DailyCombo, Sleep, SleepReason
 from bot.core.headers import headers
 from bot.core.web_client import WebClient
@@ -87,6 +86,8 @@ class Tapper:
 
             most_profit_upgrade: Upgrade = available_upgrades[0]
 
+            # pylint: disable=C0415
+            from bot.core.actions.get_daily_combo import get_daily_combo
             if not get_daily_combo(self, most_profit_upgrade):
                 break
 
