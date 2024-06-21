@@ -4,7 +4,7 @@ from bot.utils import logger
 
 
 async def get_daily_combo(bot: Tapper, most_profit_upgrade: Upgrade) -> bool:
-    if check_daily_combo_is_possible(bot):
+    if await check_daily_combo_is_possible(bot):
         combo = await bot.web_client.fetch_daily_combo()
         combo_significance = await get_daily_combo_significance(bot, combo)
 
