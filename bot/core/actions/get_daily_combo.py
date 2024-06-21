@@ -60,7 +60,7 @@ async def check_daily_combo_is_possible(bot: Tapper):
                         f"| Can't upgrade <e>{upgrade.name}</e> for daily combo "
                         f"| Required condition: <e>{upgrade.condition}</e>")
             return False
-        if upgrade.max_level >= upgrade.level:
+        if upgrade.level > upgrade.max_level:
             logger.info(f"{bot.session_name} "
                         f"| Can't upgrade <e>{upgrade.name}</e> for daily combo "
                         f"| Because max level reached")
