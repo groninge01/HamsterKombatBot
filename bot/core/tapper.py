@@ -48,6 +48,17 @@ class Tapper:
         logger.info(f"{self.session_name} | Last passive earn: <g>+{self.profile.last_passive_earn}</g> | "
                     f"Earn every hour: <y>{self.profile.earn_per_hour}</y>")
 
+    async def try_claim_daily_combo(self) -> bool:
+        if self.daily_combo.is_claimed:
+            return True
+        if len(self.daily_combo.upgrade_ids) != 3:
+            return False
+        self.profile = await self.web_client.claim_daily_combo()
+        logger.success(f"{self.session_name} | Successfully get daily combo reward | "
+                       f"Reward coins: <g>+{self.daily_combo.bonus_coins}</g>")
+        await self.sleep(delay=5)
+        return True
+
     async def check_daily_cipher(self, config: Config):
         if config.daily_cipher.is_claimed:
             return
@@ -88,8 +99,9 @@ class Tapper:
 
             # pylint: disable=C0415
             from bot.core.actions.get_daily_combo import get_daily_combo
-            if not await get_daily_combo(self, most_profit_upgrade):
-                break
+            daily_combo_upgrade = await get_daily_combo(self, most_profit_upgrade)
+            if daily_combo_upgrade is not None:
+                most_profit_upgrade = daily_combo_upgrade
 
             if most_profit_upgrade.price > self.profile.get_spending_balance():
                 logger.info(f"{self.session_name} | Not enough money for upgrade <e>{most_profit_upgrade.name}</e>")
@@ -118,6 +130,8 @@ class Tapper:
         await self.sleep(delay=sleep_time)
 
         self.profile, self.upgrades, self.daily_combo = await self.web_client.buy_upgrade(upgrade_id=upgrade.id)
+
+        await self.try_claim_daily_combo()
 
         logger.success(
             f"{self.session_name} | "

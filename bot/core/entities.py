@@ -70,8 +70,8 @@ class Upgrade:
         self.condition = data.get("condition")
 
     def calculate_significance(self, profile: Profile) -> float:
-        if self.price == 0:
-            return 0
+        if self.earn_per_hour == 0:
+            return float('inf')
         if profile.earn_per_hour == 0:
             return self.price / self.earn_per_hour
         return self.price / self.earn_per_hour \
@@ -81,7 +81,6 @@ class Upgrade:
     def can_upgrade(self) -> bool:
         return self.is_available \
             and not self.is_expired \
-            and (self.earn_per_hour != 0 or self.welcome_coins != 0) \
             and self.max_level >= self.level
 
 
