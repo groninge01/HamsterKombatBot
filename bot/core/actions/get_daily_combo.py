@@ -1,4 +1,3 @@
-from bot.config import settings
 from bot.core.entities import Upgrade
 from bot.core.tapper import Tapper
 from bot.utils import logger
@@ -57,7 +56,7 @@ async def check_daily_combo_is_possible(bot: Tapper, combo: list[Upgrade]) -> bo
                         f"| Can't upgrade <e>{upgrade.name}</e> for daily combo "
                         f"| Required condition: <e>{upgrade.condition}</e>")
             return False
-        if upgrade.level > upgrade.max_level or upgrade.level > settings.MAX_UPGRADE_LEVEL:
+        if upgrade.level > upgrade.max_level:
             logger.info(f"{bot.session_name} "
                         f"| Can't upgrade <e>{upgrade.name}</e> for daily combo "
                         f"| Because max level reached")
