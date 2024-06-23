@@ -1,3 +1,6 @@
+import datetime
+from time import time
+
 from bot.core.entities import Upgrade
 from bot.core.tapper import Tapper
 from bot.utils import logger
@@ -8,7 +11,8 @@ async def get_daily_combo(bot: Tapper, most_profit_upgrade: Upgrade) -> Upgrade 
     if reward_claimed:
         return None
 
-    combo = await bot.web_client.fetch_daily_combo()
+    combo, end_combo_timestamp = await fetch_daily_combo(bot)
+
     if len(combo) == 0:
         logger.info(f"{bot.session_name} | Daily combo not published")
         return None
@@ -17,7 +21,7 @@ async def get_daily_combo(bot: Tapper, most_profit_upgrade: Upgrade) -> Upgrade 
         filter(lambda u: u.id in combo and u.id not in bot.daily_combo.upgrade_ids, bot.upgrades)
     )
 
-    if await check_daily_combo_is_possible(bot, combo_upgrades):
+    if await check_daily_combo_is_possible(bot, combo_upgrades, end_combo_timestamp):
         combo_significance = await get_daily_combo_significance(bot, combo_upgrades)
         most_profit_upgrade_significance = most_profit_upgrade.calculate_significance(bot.profile)
         if combo_significance >= most_profit_upgrade_significance:
@@ -44,8 +48,24 @@ async def get_daily_combo_significance(bot: Tapper, combo: list[Upgrade]) -> flo
         + max((total_price - bot.profile.get_spending_balance()) / bot.profile.earn_per_hour, 0)
 
 
-async def check_daily_combo_is_possible(bot: Tapper, combo: list[Upgrade]) -> bool:
+async def fetch_daily_combo(bot: Tapper) -> tuple[list[str], float]:
+    response_json = await bot.web_client.fetch_daily_combo()
+    combo = response_json.get('combo')
+    start_combo_date = datetime.datetime \
+        .strptime(response_json.get('date'), "%Y-%m-%d") \
+        .replace(tzinfo=datetime.timezone.utc).replace(hour=12)
+    end_combo_date = start_combo_date + datetime.timedelta(days=1)
+    current_timestamp = time()
+
+    if start_combo_date.timestamp() < current_timestamp < end_combo_date.timestamp():
+        return combo, end_combo_date.timestamp()
+    return [], end_combo_date.timestamp()
+
+
+async def check_daily_combo_is_possible(bot: Tapper, combo: list[Upgrade], end_combo_timestamp: float) -> bool:
+    total_price = 0
     for upgrade in combo:
+        total_price += upgrade.price
         if upgrade.is_expired:
             logger.info(f"{bot.session_name} "
                         f"| Can't upgrade <e>{upgrade.name}</e> for daily combo "
@@ -61,4 +81,12 @@ async def check_daily_combo_is_possible(bot: Tapper, combo: list[Upgrade]) -> bo
                         f"| Can't upgrade <e>{upgrade.name}</e> for daily combo "
                         f"| Because max level reached")
             return False
+    seconds_to_combo_end = max(end_combo_timestamp - time(), 0)
+    max_possible_balance = bot.profile.get_spending_balance() + bot.profile.earn_per_sec * seconds_to_combo_end
+    if max_possible_balance < total_price:
+        logger.info(f"{bot.session_name} "
+                    f"| Impossible to buy daily combo "
+                    f"| Total price of combo: {total_price:_} "
+                    f"| Max possible balance before combo end: {max_possible_balance:_}")
+        return False
     return True
