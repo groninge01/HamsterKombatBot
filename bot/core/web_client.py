@@ -12,23 +12,25 @@ from bot.utils import logger
 from bot.utils.client import Client
 
 
+BASE_URL = "https://api.hamsterkombatgame.io"
+
 class Requests(StrEnum):
-    CONFIG = "https://api.hamsterkombat.io/clicker/config"
-    ME_TELEGRAM = "https://api.hamsterkombat.io/auth/me-telegram"
-    TAP = "https://api.hamsterkombat.io/clicker/tap"
-    BOOSTS_FOR_BUY = "https://api.hamsterkombat.io/clicker/boosts-for-buy"
-    BUY_UPGRADE = "https://api.hamsterkombat.io/clicker/buy-upgrade"
-    UPGRADES_FOR_BUY = "https://api.hamsterkombat.io/clicker/upgrades-for-buy"
-    BUY_BOOST = "https://api.hamsterkombat.io/clicker/buy-boost"
-    CHECK_TASK = "https://api.hamsterkombat.io/clicker/check-task"
-    SELECT_EXCHANGE = "https://api.hamsterkombat.io/clicker/select-exchange"
-    LIST_TASKS = "https://api.hamsterkombat.io/clicker/list-tasks"
-    SYNC = "https://api.hamsterkombat.io/clicker/sync"
-    CLAIM_DAILY_CIPHER = "https://api.hamsterkombat.io/clicker/claim-daily-cipher"
-    CLAIM_DAILY_COMBO = "https://api.hamsterkombat.io/clicker/claim-daily-combo"
-    REFERRAL_STAT = "https://api.hamsterkombat.io/clicker/referral-stat"
-    LIST_AIRDROP_TASKS = "https://api.hamsterkombat.io/clicker/list-airdrop-tasks"
-    CHECK_AIRDROP_TASK = "https://api.hamsterkombat.io/clicker/check-airdrop-task"
+    CONFIG = f"{BASE_URL}/clicker/config"
+    ME_TELEGRAM = f"{BASE_URL}/auth/me-telegram"
+    TAP = f"{BASE_URL}/clicker/tap"
+    BOOSTS_FOR_BUY = f"{BASE_URL}/clicker/boosts-for-buy"
+    BUY_UPGRADE = f"{BASE_URL}/clicker/buy-upgrade"
+    UPGRADES_FOR_BUY = f"{BASE_URL}/clicker/upgrades-for-buy"
+    BUY_BOOST = f"{BASE_URL}/clicker/buy-boost"
+    CHECK_TASK = f"{BASE_URL}/clicker/check-task"
+    SELECT_EXCHANGE = f"{BASE_URL}/clicker/select-exchange"
+    LIST_TASKS = f"{BASE_URL}/clicker/list-tasks"
+    SYNC = f"{BASE_URL}/clicker/sync"
+    CLAIM_DAILY_CIPHER = f"{BASE_URL}/clicker/claim-daily-cipher"
+    CLAIM_DAILY_COMBO = f"{BASE_URL}/clicker/claim-daily-combo"
+    REFERRAL_STAT = f"{BASE_URL}/clicker/referral-stat"
+    LIST_AIRDROP_TASKS = f"{BASE_URL}/clicker/list-airdrop-tasks"
+    CHECK_AIRDROP_TASK = f"{BASE_URL}/clicker/check-airdrop-task"
 
 
 class WebClient:
