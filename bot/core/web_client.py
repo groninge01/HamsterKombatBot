@@ -6,31 +6,30 @@ import datetime
 import aiohttp
 from better_proxy import Proxy
 
+from bot.config import API_URL
 from bot.core.entities import AirDropTask, Boost, Upgrade, Profile, Task, DailyCombo, Config, AirDropTaskId
 from bot.core.headers import create_headers
 from bot.utils import logger
 from bot.utils.client import Client
 
 
-BASE_URL = "https://api.hamsterkombatgame.io"
-
 class Requests(StrEnum):
-    CONFIG = f"{BASE_URL}/clicker/config"
-    ME_TELEGRAM = f"{BASE_URL}/auth/me-telegram"
-    TAP = f"{BASE_URL}/clicker/tap"
-    BOOSTS_FOR_BUY = f"{BASE_URL}/clicker/boosts-for-buy"
-    BUY_UPGRADE = f"{BASE_URL}/clicker/buy-upgrade"
-    UPGRADES_FOR_BUY = f"{BASE_URL}/clicker/upgrades-for-buy"
-    BUY_BOOST = f"{BASE_URL}/clicker/buy-boost"
-    CHECK_TASK = f"{BASE_URL}/clicker/check-task"
-    SELECT_EXCHANGE = f"{BASE_URL}/clicker/select-exchange"
-    LIST_TASKS = f"{BASE_URL}/clicker/list-tasks"
-    SYNC = f"{BASE_URL}/clicker/sync"
-    CLAIM_DAILY_CIPHER = f"{BASE_URL}/clicker/claim-daily-cipher"
-    CLAIM_DAILY_COMBO = f"{BASE_URL}/clicker/claim-daily-combo"
-    REFERRAL_STAT = f"{BASE_URL}/clicker/referral-stat"
-    LIST_AIRDROP_TASKS = f"{BASE_URL}/clicker/list-airdrop-tasks"
-    CHECK_AIRDROP_TASK = f"{BASE_URL}/clicker/check-airdrop-task"
+    CONFIG = f"{API_URL}/clicker/config"
+    ME_TELEGRAM = f"{API_URL}/auth/me-telegram"
+    TAP = f"{API_URL}/clicker/tap"
+    BOOSTS_FOR_BUY = f"{API_URL}/clicker/boosts-for-buy"
+    BUY_UPGRADE = f"{API_URL}/clicker/buy-upgrade"
+    UPGRADES_FOR_BUY = f"{API_URL}/clicker/upgrades-for-buy"
+    BUY_BOOST = f"{API_URL}/clicker/buy-boost"
+    CHECK_TASK = f"{API_URL}/clicker/check-task"
+    SELECT_EXCHANGE = f"{API_URL}/clicker/select-exchange"
+    LIST_TASKS = f"{API_URL}/clicker/list-tasks"
+    SYNC = f"{API_URL}/clicker/sync"
+    CLAIM_DAILY_CIPHER = f"{API_URL}/clicker/claim-daily-cipher"
+    CLAIM_DAILY_COMBO = f"{API_URL}/clicker/claim-daily-combo"
+    REFERRAL_STAT = f"{API_URL}/clicker/referral-stat"
+    LIST_AIRDROP_TASKS = f"{API_URL}/clicker/list-airdrop-tasks"
+    CHECK_AIRDROP_TASK = f"{API_URL}/clicker/check-airdrop-task"
 
 
 class WebClient:
