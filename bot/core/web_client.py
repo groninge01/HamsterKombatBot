@@ -130,20 +130,10 @@ class WebClient:
         return list(map(lambda d: AirDropTask(data=d), response['airdropTasks']))
 
     # noinspection PyMethodMayBeStatic
-    async def fetch_daily_combo(self) -> list[str]:
+    async def fetch_daily_combo(self) -> dict:
         async with aiohttp.ClientSession() as http_client:  # we don't need the headers from self.http_client
             response = await http_client.get(url="https://anisovaleksey.github.io/HamsterKombatBot/daily_combo.json")
-            response_json = await response.json()
-            combo = response_json.get('combo')
-            start_combo_date = datetime.datetime \
-                .strptime(response_json.get('date'), "%Y-%m-%d") \
-                .replace(tzinfo=datetime.timezone.utc).replace(hour=12)
-            end_combo_date = start_combo_date + datetime.timedelta(days=1)
-            current_timestamp = time()
-
-            if start_combo_date.timestamp() < current_timestamp < end_combo_date.timestamp():
-                return combo
-            return []
+            return await response.json()
 
     async def make_request(self, request: Requests, json: dict | None = None) -> dict:
         response = await self.http_client.post(url=request,

@@ -11,11 +11,11 @@ from aiohttp_proxy import ProxyConnector
 
 from bot.config import settings
 from bot.core.entities import Upgrade, Profile, Boost, Task, Config, DailyCombo, Sleep, SleepReason
+from bot.core.headers import headers
 from bot.core.web_client import WebClient
 from bot.exceptions import InvalidSession
 from bot.utils import logger
 from bot.utils.client import Client
-from .headers import headers
 
 
 class Tapper:
@@ -48,6 +48,17 @@ class Tapper:
         logger.info(f"{self.session_name} | Last passive earn: <g>+{self.profile.last_passive_earn}</g> | "
                     f"Earn every hour: <y>{self.profile.earn_per_hour}</y>")
 
+    async def try_claim_daily_combo(self) -> bool:
+        if self.daily_combo.is_claimed:
+            return True
+        if len(self.daily_combo.upgrade_ids) != 3:
+            return False
+        self.profile = await self.web_client.claim_daily_combo()
+        logger.success(f"{self.session_name} | Successfully get daily combo reward | "
+                       f"Reward coins: <g>+{self.daily_combo.bonus_coins}</g>")
+        await self.sleep(delay=5)
+        return True
+
     async def check_daily_cipher(self, config: Config):
         if config.daily_cipher.is_claimed:
             return
@@ -59,52 +70,7 @@ class Tapper:
                        f"Cipher: <m>{decoded_cipher}</m> | Reward coins: <g>+{config.daily_cipher.bonus_coins}</g>")
         await self.sleep(delay=5)
 
-    async def check_daily_combo(self):
-        if not self.daily_combo.is_claimed:
-            reward_claimed = await self.try_claim_daily_combo()
-            if reward_claimed:
-                return False
-
-            combo = await self.web_client.fetch_daily_combo()
-            if len(combo) == 0:
-                logger.info(f"{self.session_name} | Daily combo not published")
-                return False
-            combo_upgrades: list[Upgrade] = list(
-                filter(lambda u: u.id in combo and u.id not in self.daily_combo.upgrade_ids, self.upgrades)
-            )
-
-            for upgrade in combo_upgrades:
-                if not upgrade.can_upgrade():
-                    logger.info(f"{self.session_name} | Can't upgrade <e>{upgrade.name}</e> for daily combo. Skipped")
-                    return False
-            for upgrade in combo_upgrades:
-                if upgrade.price > self.profile.get_spending_balance():
-                    logger.info(f"{self.session_name} | Not enough money for upgrade <e>{upgrade.name}</e>")
-                    self.update_preferred_sleep(
-                        delay=int((upgrade.price - self.profile.get_spending_balance()) / self.profile.earn_per_sec),
-                        sleep_reason=SleepReason.WAIT_UPGRADE_MONEY
-                    )
-                    return True
-
-                await self.do_upgrade(upgrade=upgrade)
-
-            await self.try_claim_daily_combo()
-        return False
-
-    async def try_claim_daily_combo(self) -> bool:
-        if len(self.daily_combo.upgrade_ids) != 3:
-            return False
-        self.profile = await self.web_client.claim_daily_combo()
-        logger.success(f"{self.session_name} | Successfully get daily combo reward | "
-                       f"Reward coins: <g>+{self.daily_combo.bonus_coins}</g>")
-        await self.sleep(delay=5)
-        return True
-
     async def make_upgrades(self):
-        wait_for_combo_upgrades = await self.check_daily_combo()
-        if wait_for_combo_upgrades:
-            return
-
         while True:
             available_upgrades = filter(lambda u: u.can_upgrade(), self.upgrades)
 
@@ -130,6 +96,12 @@ class Tapper:
                 break
 
             most_profit_upgrade: Upgrade = available_upgrades[0]
+
+            # pylint: disable=C0415
+            from bot.core.actions.get_daily_combo import get_daily_combo
+            daily_combo_upgrade = await get_daily_combo(self, most_profit_upgrade)
+            if daily_combo_upgrade is not None:
+                most_profit_upgrade = daily_combo_upgrade
 
             if most_profit_upgrade.price > self.profile.get_spending_balance():
                 logger.info(f"{self.session_name} | Not enough money for upgrade <e>{most_profit_upgrade.name}</e>")
@@ -158,6 +130,8 @@ class Tapper:
         await self.sleep(delay=sleep_time)
 
         self.profile, self.upgrades, self.daily_combo = await self.web_client.buy_upgrade(upgrade_id=upgrade.id)
+
+        await self.try_claim_daily_combo()
 
         logger.success(
             f"{self.session_name} | "
@@ -265,7 +239,7 @@ class Tapper:
 
                     self.update_preferred_sleep(
                         delay=(
-                                          self.profile.max_energy - self.profile.available_energy) / self.profile.energy_recover_per_sec,
+                                      self.profile.max_energy - self.profile.available_energy) / self.profile.energy_recover_per_sec,
                         sleep_reason=SleepReason.WAIT_ENERGY_RECOVER
                     )
 
