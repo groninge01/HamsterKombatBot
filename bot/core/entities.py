@@ -150,6 +150,7 @@ class SleepReason(Enum):
     WAIT_UPGRADE_COOLDOWN = 1
     WAIT_UPGRADE_MONEY = 2
     WAIT_ENERGY_RECOVER = 3
+    WAIT_PASSIVE_EARN = 4
 
 
 @dataclass

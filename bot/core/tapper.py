@@ -32,7 +32,14 @@ class Tapper:
     def update_preferred_sleep(self, delay: float, sleep_reason: SleepReason):
         if self.preferred_sleep is not None and delay >= self.preferred_sleep.delay:
             return
-        self.preferred_sleep = Sleep(delay=delay, sleep_reason=sleep_reason, created_time=time())
+        if delay >= 3 * 60 * 60:
+            self.preferred_sleep = Sleep(
+                delay=randint(1*60*60, 2*60*60),
+                sleep_reason=SleepReason.WAIT_PASSIVE_EARN,
+                created_time=time()
+            )
+        else:
+            self.preferred_sleep = Sleep(delay=delay, sleep_reason=sleep_reason, created_time=time())
 
     async def earn_money(self):
         profile = await self.web_client.get_profile_data()
