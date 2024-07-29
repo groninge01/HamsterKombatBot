@@ -1,14 +1,13 @@
 import json as json_parser
 from enum import StrEnum
 from time import time
-import datetime
 
 import aiohttp
 from better_proxy import Proxy
 
 from bot.config import API_URL
-from bot.core.entities import AirDropTask, Boost, Upgrade, Profile, Task, DailyCombo, Config, AirDropTaskId
-from bot.core.headers import create_headers
+from bot.core.entities import AirDropTask, Boost, Upgrade, Profile, Task, DailyCombo, Config, AirDropTaskId, PromoState
+from bot.core.headers import create_hamster_headers
 from bot.utils import logger
 from bot.utils.client import Client
 
@@ -32,6 +31,8 @@ class Requests(StrEnum):
     CHECK_AIRDROP_TASK = f"{API_URL}/clicker/check-airdrop-task"
     START_KEYS_MINIGAME = f"{API_URL}/clicker/start-keys-minigame"
     CLAIM_DAILY_KEYS_MINIGAME = f"{API_URL}/clicker/claim-daily-keys-minigame"
+    APPLY_PROMO = f"{API_URL}/clicker/apply-promo"
+    GET_PROMOS = f"{API_URL}/clicker/get-promos"
 
 
 class WebClient:
@@ -146,11 +147,30 @@ class WebClient:
             response = await http_client.get(url="https://anisovaleksey.github.io/HamsterKombatBot/daily_combo.json")
             return await response.json()
 
+    async def apply_promo(self, promo_code: str) -> Profile:
+        response = await self.make_request(Requests.APPLY_PROMO, json={"promoCode": promo_code})
+        if 'found' in response:
+            response = response['found']
+        return Profile(data=response.get('clickerUser'))
+
+    async def get_promos(self) -> list[PromoState]:
+        response = await self.make_request(Requests.GET_PROMOS)
+        promo_states = {}
+        for promo_state in response["states"]:
+            promo_states[promo_state["promoId"]] = promo_state
+        return [
+            PromoState(
+                data=x,
+                promo_state=promo_states[x["promoId"]] if promo_states.__contains__(x["promoId"]) else None
+            ) for x in response["promos"]
+        ]
+
     async def make_request(self, request: Requests, json: dict | None = None) -> dict:
         response = await self.http_client.post(url=request,
-                                               headers=create_headers(json),
+                                               headers=create_hamster_headers(json),
                                                json=json)
         response_text = await response.text()
+
         if response.status != 422:
             response.raise_for_status()
 

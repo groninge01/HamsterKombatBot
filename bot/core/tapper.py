@@ -11,7 +11,7 @@ from aiohttp_proxy import ProxyConnector
 
 from bot.config import settings
 from bot.core.entities import Upgrade, Profile, Boost, Task, Config, DailyCombo, Sleep, SleepReason
-from bot.core.headers import headers
+from bot.core.promo_keys_generator import PromoKeysGenerator, Promo
 from bot.core.web_client import WebClient
 from bot.exceptions import InvalidSession
 from bot.core.actions.daily_keys_mini_game import get_keys_mini_game_cipher
@@ -20,13 +20,14 @@ from bot.utils.client import Client
 
 
 class Tapper:
-    def __init__(self, web_client: WebClient) -> None:
+    def __init__(self, web_client: WebClient, promo_keys_generator: PromoKeysGenerator) -> None:
         self.web_client = web_client
         self.session_name = web_client.session_name
         self.profile = Profile(data={})
         self.upgrades: list[Upgrade] = []
         self.boosts: list[Boost] = []
         self.tasks: list[Task] = []
+        self.promo_key_generator = promo_keys_generator
         self.daily_combo: DailyCombo | None = None
         self.preferred_sleep: Sleep | None = None
 
@@ -35,7 +36,7 @@ class Tapper:
             return
         if delay >= 3 * 60 * 60:
             self.preferred_sleep = Sleep(
-                delay=randint(1*60*60, 2*60*60),
+                delay=randint(1 * 60 * 60, 2 * 60 * 60),
                 sleep_reason=SleepReason.WAIT_PASSIVE_EARN,
                 created_time=time()
             )
@@ -98,20 +99,6 @@ class Tapper:
                 available_upgrades, key=lambda u: u.calculate_significance(self.profile), reverse=False
             )
 
-            # тут мы получили полный отсортированный список апгрейдов
-            # из него берем топ 10 апгрейтов, которые мы в принципе рассматриваем для обновления(остальные условно считаем не выгодные)
-            # далее из этого списка мы получаем только те апгрейды, которые еще "не раздутые", чтобы не завышать цену еще больше.
-            # это нужно для высоких левелов, когда карточки уже очень дорогие и мы хотим состедоточиться на накоплении баланса,
-            # но так же хотим апать новые, выгодные карточки, которые недавно открылись.
-            available_upgrades = list(filter(
-                lambda u: u.level < settings.MAX_UPGRADE_LEVEL and u.price < settings.MAX_UPGRADE_PRICE,
-                available_upgrades[:10]
-            ))
-
-            if len(available_upgrades) == 0:
-                logger.info(f"{self.session_name} | No available upgrades")
-                break
-
             most_profit_upgrade: Upgrade = available_upgrades[0]
 
             # pylint: disable=C0415
@@ -119,6 +106,20 @@ class Tapper:
             daily_combo_upgrade = await get_daily_combo(self, most_profit_upgrade)
             if daily_combo_upgrade is not None:
                 most_profit_upgrade = daily_combo_upgrade
+            else:
+                # тут мы получили полный отсортированный список апгрейдов
+                # из него берем топ 10 апгрейтов, которые мы в принципе рассматриваем для обновления(остальные условно считаем не выгодные)
+                # далее из этого списка мы получаем только те апгрейды, которые еще "не раздутые", чтобы не завышать цену еще больше.
+                # это нужно для высоких левелов, когда карточки уже очень дорогие и мы хотим состедоточиться на накоплении баланса,
+                # но так же хотим апать новые, выгодные карточки, которые недавно открылись.
+                available_upgrades = list(filter(
+                    lambda u: u.level < settings.MAX_UPGRADE_LEVEL and u.price < settings.MAX_UPGRADE_PRICE,
+                    available_upgrades[:10]
+                ))
+                if len(available_upgrades) == 0:
+                    logger.info(f"{self.session_name} | No available upgrades")
+                    break
+                most_profit_upgrade = available_upgrades[0]
 
             if most_profit_upgrade.price > self.profile.get_spending_balance():
                 logger.info(f"{self.session_name} | Not enough money for upgrade <e>{most_profit_upgrade.name}</e>")
@@ -198,7 +199,7 @@ class Tapper:
         self.profile = profile
 
         logger.success(f"{self.session_name} | Successful tapped <c>{simulated_taps}</c> times! | "
-                       f"Balance: <c>{format_number(self.profile.balance)}</c> (<g>+{calc_taps}</g>)")
+                       f"Balance: <c>{format_number(self.profile.balance)}</c> (<g>+{format_number(calc_taps)}</g>)")
         return True
 
     async def sleep(self, delay: int):
@@ -229,6 +230,9 @@ class Tapper:
 
                 # KEYS MINI-GAME
                 await self.check_daily_keys_mini_game(config=config)
+
+                # MINI-GAMES WITH PROMO CODES
+                await self.check_mini_games(config=config)
 
                 # TASKS COMPLETING
                 for task in self.tasks:
@@ -276,26 +280,31 @@ class Tapper:
                         case SleepReason.WAIT_UPGRADE_MONEY:
                             logger.info(f"{self.session_name} | Sleep {sleep_time:.0f}s for earn money for upgrades")
                         case SleepReason.WAIT_UPGRADE_COOLDOWN:
-                            logger.info(f"{self.session_name} | Sleep {sleep_time:.0f}s for waiting cooldown for upgrades")
+                            logger.info(
+                                f"{self.session_name} | Sleep {sleep_time:.0f}s for waiting cooldown for upgrades")
                         case SleepReason.WAIT_ENERGY_RECOVER:
                             logger.info(f"{self.session_name} | Sleep {sleep_time:.0f}s for recover full energy")
                         case SleepReason.WAIT_PASSIVE_EARN:
                             logger.info(f"{self.session_name} | Sleep {sleep_time:.0f}s for earn money")
                         case SleepReason.WAIT_DAILY_KEYS_MINI_GAME:
                             logger.info(f"{self.session_name} | Sleep {sleep_time:.0f}s for wait daily keys mini-game")
+                        case SleepReason.WAIT_PROMO_CODES:
+                            logger.info(f"{self.session_name} | Sleep {sleep_time:.0f}s for wait promo-codes")
 
                     self.preferred_sleep = None
                     await self.sleep(delay=sleep_time)
                 else:
-                    logger.info(f"{self.session_name} | Sleep 3600s before next iteration")
-                    await self.sleep(delay=3600)
+                    sleep_time = randint(1 * 60 * 30, 2 * 60 * 60)
+                    logger.info(f"{self.session_name} | Sleep {sleep_time}s before next iteration")
+                    await self.sleep(delay=sleep_time)
 
             except InvalidSession as error:
                 raise error
             except aiohttp.ClientResponseError as error:
                 logger.error(f"{self.session_name} | Client response error: {error}")
-                logger.info(f"{self.session_name} | Sleep 3600s before next iteration because of error")
-                await self.sleep(delay=3600)
+                sleep_time = randint(1 * 60 * 30, 2 * 60 * 60)
+                logger.info(f"{self.session_name} | Sleep {sleep_time}s before next iteration because of error")
+                await self.sleep(delay=sleep_time)
             except Exception as error:
                 logger.error(f"{self.session_name} | Unknown error: {error}")
                 traceback.print_exc()
@@ -307,7 +316,8 @@ class Tapper:
 
         remain_seconds = config.daily_keys_mini_game.remain_seconds_to_next_attempt
         if remain_seconds > 0:
-            logger.info(f"{self.session_name} | Daily keys mini-game will be available after {remain_seconds:.0f} seconds")
+            logger.info(
+                f"{self.session_name} | Daily keys mini-game will be available after {remain_seconds:.0f} seconds")
             self.update_preferred_sleep(
                 delay=remain_seconds,
                 sleep_reason=SleepReason.WAIT_DAILY_KEYS_MINI_GAME
@@ -316,17 +326,55 @@ class Tapper:
 
         await self.web_client.start_keys_minigame()
         await self.sleep(delay=randint(5, 15))
-        self.profile = await self.web_client.claim_daily_keys_minigame(cipher=get_keys_mini_game_cipher(config, self.profile.id))
+        self.profile = await self.web_client.claim_daily_keys_minigame(
+            cipher=get_keys_mini_game_cipher(config, self.profile.id))
         logger.info(f"{self.session_name} | Daily keys mini-game successfully finished | "
                     f"Total keys: {self.profile.balance_keys}")
 
+    async def check_mini_games(self, config: Config):
+        promo_states = await self.web_client.get_promos()
+        for promo_state in promo_states:
+            keys_left = promo_state.available_keys_per_day - promo_state.receive_keys_today
+            promo = next((p for p in config.promos if p.promo_id == promo_state.id), None)
 
-async def run_tapper(client: Client, proxy: str | None):
+            if promo is None:
+                logger.info(f"{self.session_name} | Promo not found for id: {promo_state.id}")
+                continue
+
+            if promo.blocked:
+                continue
+
+            promo = Promo(
+                client_id=self.profile.id,
+                promo_app=promo.promo_app_id,
+                promo_id=promo.promo_id,
+            )
+            add_to_queue = False
+
+            if keys_left > 0:
+                for i in range(keys_left):
+                    promo_code = self.promo_key_generator.consume_promo_code(promo_state.id)
+                    if promo_code is not None:
+                        self.profile = await self.web_client.apply_promo(promo_code)
+                        logger.info(f"{self.session_name} | Promo code successfully applied | Total keys: {self.profile.balance_keys}")
+                    else:
+                        add_to_queue = True
+                        break
+
+            if add_to_queue:
+                self.promo_key_generator.add_promo_to_queue(promo)
+                logger.info(f"{self.session_name} | Promo added to queue ({promo.promo_id})")
+                self.update_preferred_sleep(30 * 60, SleepReason.WAIT_PROMO_CODES)
+            elif self.promo_key_generator.remove_promo_from_queue(promo):
+                logger.info(f"{self.session_name} | Promo ({promo.promo_id}) done, removed from queue")
+
+
+async def run_tapper(client: Client, promo_keys_generator: PromoKeysGenerator, proxy: str | None):
     try:
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
 
-        async with aiohttp.ClientSession(headers=headers, connector=proxy_conn) as http_client:
+        async with aiohttp.ClientSession(connector=proxy_conn) as http_client:
             web_client = WebClient(http_client=http_client, client=client, proxy=proxy)
-            await Tapper(web_client=web_client).run()
+            await Tapper(web_client=web_client, promo_keys_generator=promo_keys_generator).run()
     except InvalidSession:
         logger.error(f"{client.name} | Invalid Session")
