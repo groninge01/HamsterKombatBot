@@ -264,8 +264,7 @@ class Tapper:
                             await self.make_taps()
 
                     self.update_preferred_sleep(
-                        delay=(
-                                      self.profile.max_energy - self.profile.available_energy) / self.profile.energy_recover_per_sec,
+                        delay=(self.profile.max_energy - self.profile.available_energy) / self.profile.energy_recover_per_sec,
                         sleep_reason=SleepReason.WAIT_ENERGY_RECOVER
                     )
 
