@@ -227,12 +227,10 @@ class Promo:
 class Config:
     daily_cipher: DailyCipher
     daily_keys_mini_game: DailyKeysMiniGame
-    promos: list[Promo]
 
     def __init__(self, data: dict):
         self.daily_cipher = DailyCipher(data=data["dailyCipher"])
         self.daily_keys_mini_game = DailyKeysMiniGame(data=data["dailyKeysMiniGame"])
-        self.promos = [Promo(data=promo, promo_app_id=promos["token"], blocked=promos["blocked"]) for promos in data.get("clickerConfig").get("promos").get("apps") for promo in promos["promos"]]
 
 
 class SleepReason(Enum):

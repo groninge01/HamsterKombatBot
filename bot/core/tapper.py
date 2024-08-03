@@ -333,21 +333,22 @@ class Tapper:
 
     async def check_mini_games(self, config: Config):
         promo_states = await self.web_client.get_promos()
+
+        promo_apps_map = {
+            # Promo ID : App ID
+            "43e35910-c168-4634-ad4f-52fd764a843f": "d28721be-fd2d-4b45-869e-9f253b554e50"
+        }
         for promo_state in promo_states:
             keys_left = promo_state.available_keys_per_day - promo_state.receive_keys_today
-            promo = next((p for p in config.promos if p.promo_id == promo_state.id), None)
 
-            if promo is None:
-                logger.info(f"{self.session_name} | Promo not found for id: {promo_state.id}")
-                continue
-
-            if promo.blocked:
+            if promo_state.id not in promo_apps_map:
+                logger.info(f"{self.session_name} | Promo Application not found for id: {promo_state.id}")
                 continue
 
             promo = Promo(
                 client_id=self.profile.id,
-                promo_app=promo.promo_app_id,
-                promo_id=promo.promo_id,
+                promo_app=promo_apps_map[promo_state.id],
+                promo_id=promo_state.id,
             )
             add_to_queue = False
 
@@ -356,7 +357,8 @@ class Tapper:
                     promo_code = self.promo_key_generator.consume_promo_code(promo_state.id)
                     if promo_code is not None:
                         self.profile = await self.web_client.apply_promo(promo_code)
-                        logger.info(f"{self.session_name} | Promo code successfully applied | Total keys: {self.profile.balance_keys}")
+                        logger.info(
+                            f"{self.session_name} | Promo code successfully applied | Total keys: {self.profile.balance_keys}")
                     else:
                         add_to_queue = True
                         break
