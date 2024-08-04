@@ -68,7 +68,7 @@ class WebClient:
         return response.get('task', {}).get('isCompleted', False)
 
     async def apply_boost(self, boost_id: str) -> Profile:
-        response = await self.make_request(Requests.BUY_BOOST, json={'timestamp': time(), 'boostId': boost_id})
+        response = await self.make_request(Requests.BUY_BOOST, json={'timestamp': int(time()), 'boostId': boost_id})
         profile_data = response.get('clickerUser') or response.get('found', {}).get('clickerUser', {})
 
         return Profile(data=profile_data)
@@ -93,7 +93,7 @@ class WebClient:
 
     async def send_taps(self, available_energy: int, taps: int) -> Profile:
         response = await self.make_request(Requests.TAP,
-                                           json={'availableTaps': available_energy, 'count': taps, 'timestamp': time()})
+                                           json={'availableTaps': available_energy, 'count': taps, 'timestamp': int(time())})
         profile_data = response.get('clickerUser') or response.get('found', {}).get('clickerUser', {})
 
         return Profile(data=profile_data)
