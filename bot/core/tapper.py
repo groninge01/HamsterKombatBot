@@ -66,6 +66,7 @@ class Tapper:
         if len(self.daily_combo.upgrade_ids) != 3:
             return False
         self.profile = await self.web_client.claim_daily_combo()
+        self.daily_combo.is_claimed = True
         logger.success(f"{self.session_name} | "
                        f"Successfully get daily combo reward | "
                        f"Reward coins: <g>+{format_number(self.daily_combo.bonus_coins)}</g>")
