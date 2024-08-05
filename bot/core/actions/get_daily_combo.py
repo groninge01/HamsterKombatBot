@@ -4,9 +4,10 @@ from time import time
 from bot.core.entities import Upgrade
 from bot.core.tapper import Tapper
 from bot.utils import logger, format_number
+from bot.config import settings
 
 
-async def get_daily_combo(bot: Tapper, most_profit_upgrade: Upgrade) -> Upgrade | None:
+async def get_daily_combo(bot: Tapper) -> Upgrade | None:
     reward_claimed = await bot.try_claim_daily_combo()
     if reward_claimed:
         return None
@@ -22,14 +23,7 @@ async def get_daily_combo(bot: Tapper, most_profit_upgrade: Upgrade) -> Upgrade 
     )
 
     if await check_daily_combo_is_possible(bot, combo_upgrades, end_combo_timestamp):
-        combo_significance = await get_daily_combo_significance(bot, combo_upgrades)
-        most_profit_upgrade_significance = most_profit_upgrade.calculate_significance(bot.profile)
-        if combo_significance >= most_profit_upgrade_significance:
-            logger.info(f"{bot.session_name} | Daily combo is not profitable "
-                        f"| Combo payback: {combo_significance:.0f} hours "
-                        f"| Most profit Upgrade: {most_profit_upgrade_significance:.0f} hours")
-        else:
-            return combo_upgrades[0]
+        return combo_upgrades[0]
 
     return None
 
@@ -82,11 +76,18 @@ async def check_daily_combo_is_possible(bot: Tapper, combo: list[Upgrade], end_c
                         f"| Because max level reached")
             return False
     seconds_to_combo_end = max(end_combo_timestamp - time(), 0)
-    max_possible_balance = bot.profile.get_spending_balance() + bot.profile.earn_per_sec * seconds_to_combo_end
+    earn_balance = bot.profile.earn_per_sec * seconds_to_combo_end
+    max_possible_balance = bot.profile.get_spending_balance() + earn_balance
     if max_possible_balance < total_price:
         logger.info(f"{bot.session_name} "
                     f"| Impossible to buy daily combo "
                     f"| Total price of combo: {format_number(total_price)} "
                     f"| Max possible balance before combo end: {format_number(max_possible_balance)}")
+        return False
+    elif settings.ALWAYS_APPLY_DAILY_COMBO is False and earn_balance < total_price - 5_000_000:
+        logger.info(f"{bot.session_name} "
+                    f"| Daily combo costs more than daily income "
+                    f"| Total price of combo: {format_number(total_price)} "
+                    f"| Daily income: {format_number(earn_balance)}")
         return False
     return True

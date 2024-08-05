@@ -88,6 +88,7 @@ class Tapper:
     async def make_upgrades(self):
         while True:
             available_upgrades = filter(lambda u: u.can_upgrade(), self.upgrades)
+            available_upgrades = filter(lambda u: u.calculate_significance(self.profile) < settings.MAX_PAYBACK_PERIOD, available_upgrades)
 
             if not settings.WAIT_FOR_MOST_PROFIT_UPGRADES:
                 available_upgrades = filter(
@@ -99,11 +100,9 @@ class Tapper:
                 available_upgrades, key=lambda u: u.calculate_significance(self.profile), reverse=False
             )
 
-            most_profit_upgrade: Upgrade = available_upgrades[0]
-
             # pylint: disable=C0415
             from bot.core.actions.get_daily_combo import get_daily_combo
-            daily_combo_upgrade = await get_daily_combo(self, most_profit_upgrade)
+            daily_combo_upgrade = await get_daily_combo(self)
             if daily_combo_upgrade is not None:
                 most_profit_upgrade = daily_combo_upgrade
             else:
