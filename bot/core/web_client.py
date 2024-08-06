@@ -80,7 +80,7 @@ class WebClient:
             DailyCombo(data=response.get('dailyCombo', {}))
 
     async def buy_upgrade(self, upgrade_id: str) -> tuple[Profile, list[Upgrade], DailyCombo]:
-        response = await self.make_request(Requests.BUY_UPGRADE, json={'timestamp': time(), 'upgradeId': upgrade_id})
+        response = await self.make_request(Requests.BUY_UPGRADE, json={'timestamp': int(time()), 'upgradeId': upgrade_id})
         if 'found' in response:
             response = response['found']
         profile_data = response.get('clickerUser')
