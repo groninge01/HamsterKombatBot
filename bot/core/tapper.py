@@ -66,6 +66,7 @@ class Tapper:
         if len(self.daily_combo.upgrade_ids) != 3:
             return False
         self.profile = await self.web_client.claim_daily_combo()
+        self.daily_combo.is_claimed = True
         logger.success(f"{self.session_name} | "
                        f"Successfully get daily combo reward | "
                        f"Reward coins: <g>+{format_number(self.daily_combo.bonus_coins)}</g>")
@@ -88,6 +89,7 @@ class Tapper:
     async def make_upgrades(self):
         while True:
             available_upgrades = filter(lambda u: u.can_upgrade(), self.upgrades)
+            available_upgrades = filter(lambda u: u.calculate_significance(self.profile) < settings.MAX_PAYBACK_PERIOD, available_upgrades)
 
             if not settings.WAIT_FOR_MOST_PROFIT_UPGRADES:
                 available_upgrades = filter(
@@ -99,11 +101,9 @@ class Tapper:
                 available_upgrades, key=lambda u: u.calculate_significance(self.profile), reverse=False
             )
 
-            most_profit_upgrade: Upgrade = available_upgrades[0]
-
             # pylint: disable=C0415
             from bot.core.actions.get_daily_combo import get_daily_combo
-            daily_combo_upgrade = await get_daily_combo(self, most_profit_upgrade)
+            daily_combo_upgrade = await get_daily_combo(self)
             if daily_combo_upgrade is not None:
                 most_profit_upgrade = daily_combo_upgrade
             else:
@@ -333,10 +333,8 @@ class Tapper:
     async def check_mini_games(self, config: Config):
         promo_states = await self.web_client.get_promos()
 
-        promo_apps_map = {
-            # Promo ID : App ID
-            "43e35910-c168-4634-ad4f-52fd764a843f": "d28721be-fd2d-4b45-869e-9f253b554e50"
-        }
+        # Promo ID : App ID
+        promo_apps_map = await self.web_client.fetch_promo_app_mapping()
         for promo_state in promo_states:
             keys_left = promo_state.available_keys_per_day - promo_state.receive_keys_today
 
