@@ -147,6 +147,13 @@ class WebClient:
             response = await http_client.get(url="https://anisovaleksey.github.io/HamsterKombatBot/daily_combo.json")
             return await response.json()
 
+    # noinspection PyMethodMayBeStatic
+    async def fetch_promo_app_mapping(self) -> dict:
+        async with aiohttp.ClientSession() as http_client:  # we don't need the headers from self.http_client
+            response = await http_client.get(
+                url="https://anisovaleksey.github.io/HamsterKombatBot/promo_apps.json")
+            return await response.json()
+
     async def apply_promo(self, promo_code: str) -> Profile:
         response = await self.make_request(Requests.APPLY_PROMO, json={"promoCode": promo_code})
         if 'found' in response:

@@ -333,10 +333,8 @@ class Tapper:
     async def check_mini_games(self, config: Config):
         promo_states = await self.web_client.get_promos()
 
-        promo_apps_map = {
-            # Promo ID : App ID
-            "43e35910-c168-4634-ad4f-52fd764a843f": "d28721be-fd2d-4b45-869e-9f253b554e50"
-        }
+        # Promo ID : App ID
+        promo_apps_map = await self.web_client.fetch_promo_app_mapping()
         for promo_state in promo_states:
             keys_left = promo_state.available_keys_per_day - promo_state.receive_keys_today
 
