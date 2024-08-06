@@ -6,7 +6,8 @@ import aiohttp
 from better_proxy import Proxy
 
 from bot.config import API_URL
-from bot.core.entities import AirDropTask, Boost, Upgrade, Profile, Task, DailyCombo, Config, AirDropTaskId, PromoState
+from bot.core.entities import AirDropTask, Boost, Upgrade, Profile, Task, DailyCombo, Config, AirDropTaskId, PromoState, \
+    Promo
 from bot.core.headers import create_hamster_headers
 from bot.utils import logger
 from bot.utils.client import Client
@@ -152,7 +153,8 @@ class WebClient:
         async with aiohttp.ClientSession() as http_client:  # we don't need the headers from self.http_client
             response = await http_client.get(
                 url="https://anisovaleksey.github.io/HamsterKombatBot/promo_apps.json")
-            return await response.json()
+            promo_apps = await response.json()
+            return dict((promo_app.get("promoId"), Promo(promo_app)) for promo_app in promo_apps)
 
     async def apply_promo(self, promo_code: str) -> Profile:
         response = await self.make_request(Requests.APPLY_PROMO, json={"promoCode": promo_code})

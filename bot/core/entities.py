@@ -205,22 +205,12 @@ class DailyKeysMiniGame:
 class Promo:
     promo_app_id: str
     promo_id: str
-    prefix: str
-    events_count: int
-    codes_per_day: int
-    keys_per_day: int
-    keys_per_code: int
-    blocked: bool
+    min_wait_after_login: int
 
-    def __init__(self, data: dict, promo_app_id: str, blocked: bool):
-        self.promo_app_id = promo_app_id
+    def __init__(self, data: dict):
+        self.promo_app_id = data["appToken"]
         self.promo_id = data["promoId"]
-        self.prefix = data["prefix"]
-        self.events_count = data["eventsCount"]
-        self.codes_per_day = data["codesPerDay"]
-        self.keys_per_day = data["keysPerDay"]
-        self.keys_per_code = data["keysPerCode"]
-        self.blocked = data["blocked"] or blocked
+        self.min_wait_after_login = data["minWaitAfterLogin"]
 
 
 @dataclass

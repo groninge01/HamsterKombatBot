@@ -13,6 +13,7 @@ class Promo:
     client_id: str
     promo_app: str
     promo_id: str
+    min_wait_after_login: int
 
 
 class PromoKeysGenerator:
@@ -95,7 +96,9 @@ class PromoKeysGenerator:
     async def __generate_promo_key(self, promo: Promo) -> str:
         logger.info("[Promo Keys Generator] Start generating promo-code")
         auth_token = await self.web_client.login_gamepromo(app_token=promo.promo_app)
-        await asyncio.sleep(delay=2)
+        wait_time = randint(promo.min_wait_after_login, promo.min_wait_after_login + 20)
+        logger.info(f"[Promo Keys Generator] Successfully logged in | Waiting {wait_time} seconds before events registering")
+        await asyncio.sleep(delay=wait_time)
         has_code = False
         while not has_code:
             try:

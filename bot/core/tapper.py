@@ -232,7 +232,7 @@ class Tapper:
                 await self.check_daily_keys_mini_game(config=config)
 
                 # MINI-GAMES WITH PROMO CODES
-                await self.check_mini_games(config=config)
+                await self.check_mini_games()
 
                 # TASKS COMPLETING
                 for task in self.tasks:
@@ -330,7 +330,7 @@ class Tapper:
         logger.info(f"{self.session_name} | Daily keys mini-game successfully finished | "
                     f"Total keys: {self.profile.balance_keys}")
 
-    async def check_mini_games(self, config: Config):
+    async def check_mini_games(self):
         promo_states = await self.web_client.get_promos()
 
         # Promo ID : App ID
@@ -344,8 +344,9 @@ class Tapper:
 
             promo = Promo(
                 client_id=self.profile.id,
-                promo_app=promo_apps_map[promo_state.id],
+                promo_app=promo_apps_map[promo_state.id].promo_app_id,
                 promo_id=promo_state.id,
+                min_wait_after_login=promo_apps_map[promo_state.id].min_wait_after_login,
             )
             add_to_queue = False
 
