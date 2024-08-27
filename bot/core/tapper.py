@@ -150,13 +150,13 @@ class Tapper:
 
         self.profile, self.upgrades, self.daily_combo = await self.web_client.buy_upgrade(upgrade_id=upgrade.id)
 
-        await self.try_claim_daily_combo()
-
         logger.success(
             f"{self.session_name} | "
             f"Successfully upgraded <e>{upgrade.name}</e> to <m>{upgrade.level}</m> lvl | "
             f"Earn every hour: <y>{format_number(self.profile.earn_per_hour)}</y> "
             f"(<g>+{format_number(upgrade.earn_per_hour)}</g>)")
+
+        await self.try_claim_daily_combo()
 
     async def apply_energy_boost(self) -> bool:
         energy_boost = next((boost for boost in self.boosts if boost.id == 'BoostFullAvailableTaps'), {})
@@ -309,11 +309,11 @@ class Tapper:
                 traceback.print_exc()
                 await self.sleep(delay=3)
 
-    async def check_daily_keys_mini_game(self, config):
-        if config.daily_keys_mini_game.is_claimed:
+    async def check_daily_keys_mini_game(self, config: Config):
+        if config.candles_mini_game.is_claimed:
             return
 
-        remain_seconds = config.daily_keys_mini_game.remain_seconds_to_next_attempt
+        remain_seconds = config.candles_mini_game.remain_seconds_to_next_attempt
         if remain_seconds > 0:
             logger.info(
                 f"{self.session_name} | Daily keys mini-game will be available after {remain_seconds:.0f} seconds")

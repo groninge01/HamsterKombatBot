@@ -178,7 +178,7 @@ class DailyCipher:
 
 
 @dataclass
-class DailyKeysMiniGame:
+class CandlesMiniGame:
     start_date: str
     level_config: str
     youtube_url: str
@@ -216,11 +216,11 @@ class Promo:
 @dataclass
 class Config:
     daily_cipher: DailyCipher
-    daily_keys_mini_game: DailyKeysMiniGame
+    candles_mini_game: CandlesMiniGame
 
     def __init__(self, data: dict):
         self.daily_cipher = DailyCipher(data=data["dailyCipher"])
-        self.daily_keys_mini_game = DailyKeysMiniGame(data=data["dailyKeysMiniGame"])
+        self.candles_mini_game = CandlesMiniGame(data=data["dailyKeysMiniGames"]["Candles"])
 
 
 class SleepReason(Enum):
