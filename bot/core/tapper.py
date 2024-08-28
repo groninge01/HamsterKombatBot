@@ -345,10 +345,10 @@ class Tapper:
                         f"Bonus coins: {format_number(bonus_coins)} | Total balance: {format_number(self.profile.balance)}")
 
         if daily_mini_game.remain_points > 0:
-            sleep_time = randint(10, 30)
-            logger.info(f"{self.session_name} | Sleep {sleep_time}s before next attempt in mini-game")
-            await self.sleep(delay=sleep_time)
-            await self.pass_mini_game(daily_mini_game)
+            self.update_preferred_sleep(
+                delay=randint(1200, 3600),
+                sleep_reason=SleepReason.WAIT_DAILY_KEYS_MINI_GAME
+            )
 
     async def check_mini_games(self):
         promo_states = await self.web_client.get_promos()
