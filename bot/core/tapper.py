@@ -221,7 +221,6 @@ class Tapper:
                 #     - list-tasks
                 await self.web_client.get_me_telegram()
                 config = await self.web_client.get_config()
-                print(config)
                 await self.earn_money()
                 self.upgrades, self.daily_combo = await self.web_client.get_upgrades()
                 self.boosts = await self.web_client.get_boosts()
