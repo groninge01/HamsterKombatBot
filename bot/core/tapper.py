@@ -10,7 +10,7 @@ import aiohttp
 from aiohttp_proxy import ProxyConnector
 
 from bot.config import settings
-from bot.core.entities import Upgrade, Profile, Boost, Task, Config, DailyCombo, Sleep, SleepReason
+from bot.core.entities import Upgrade, Profile, Boost, Task, Config, DailyCombo, Sleep, SleepReason, DailyMiniGame
 from bot.core.promo_keys_generator import PromoKeysGenerator, Promo
 from bot.core.web_client import WebClient
 from bot.exceptions import InvalidSession
@@ -89,7 +89,8 @@ class Tapper:
     async def make_upgrades(self):
         while True:
             available_upgrades = filter(lambda u: u.can_upgrade(), self.upgrades)
-            available_upgrades = filter(lambda u: u.calculate_significance(self.profile) < settings.MAX_PAYBACK_PERIOD, available_upgrades)
+            available_upgrades = filter(lambda u: u.calculate_significance(self.profile) < settings.MAX_PAYBACK_PERIOD,
+                                        available_upgrades)
 
             if not settings.WAIT_FOR_MOST_PROFIT_UPGRADES:
                 available_upgrades = filter(
@@ -220,6 +221,7 @@ class Tapper:
                 #     - list-tasks
                 await self.web_client.get_me_telegram()
                 config = await self.web_client.get_config()
+                print(config)
                 await self.earn_money()
                 self.upgrades, self.daily_combo = await self.web_client.get_upgrades()
                 self.boosts = await self.web_client.get_boosts()
@@ -264,7 +266,8 @@ class Tapper:
                             await self.make_taps()
 
                     self.update_preferred_sleep(
-                        delay=(self.profile.max_energy - self.profile.available_energy) / self.profile.energy_recover_per_sec,
+                        delay=(
+                                          self.profile.max_energy - self.profile.available_energy) / self.profile.energy_recover_per_sec,
                         sleep_reason=SleepReason.WAIT_ENERGY_RECOVER
                     )
 
@@ -310,25 +313,42 @@ class Tapper:
                 await self.sleep(delay=3)
 
     async def check_daily_keys_mini_game(self, config: Config):
-        if config.candles_mini_game.is_claimed:
-            return
+        for mini_game in config.mini_games:
+            if mini_game.is_claimed:
+                continue
 
-        remain_seconds = config.candles_mini_game.remain_seconds_to_next_attempt
-        if remain_seconds > 0:
-            logger.info(
-                f"{self.session_name} | Daily keys mini-game will be available after {remain_seconds:.0f} seconds")
-            self.update_preferred_sleep(
-                delay=remain_seconds,
-                sleep_reason=SleepReason.WAIT_DAILY_KEYS_MINI_GAME
-            )
-            return
+            remain_seconds = mini_game.remain_seconds_to_next_attempt
+            if remain_seconds > 0 and mini_game.id != "Tiles":
+                logger.info(
+                    f"{self.session_name} | Daily keys mini-game will be available after {remain_seconds:.0f} seconds")
+                self.update_preferred_sleep(
+                    delay=remain_seconds,
+                    sleep_reason=SleepReason.WAIT_DAILY_KEYS_MINI_GAME
+                )
+                continue
 
-        await self.web_client.start_keys_minigame()
+            await self.pass_mini_game(mini_game)
+
+    async def pass_mini_game(self, mini_game: DailyMiniGame):
+        balance_keys = self.profile.balance_keys
+        await self.web_client.start_keys_minigame(mini_game.id)
         await self.sleep(delay=randint(5, 15))
-        self.profile = await self.web_client.claim_daily_keys_minigame(
-            cipher=get_keys_mini_game_cipher(config, self.profile.id))
-        logger.info(f"{self.session_name} | Daily keys mini-game successfully finished | "
-                    f"Total keys: {self.profile.balance_keys}")
+        self.profile, daily_mini_game, bonus_coins = await self.web_client.claim_daily_keys_minigame(
+            cipher=get_keys_mini_game_cipher(mini_game, self.profile.id, mini_game.remain_points),
+            mini_game_id=mini_game.id
+        )
+        if self.profile.balance_keys > balance_keys:
+            logger.info(f"{self.session_name} | Daily mini-game `{mini_game.id}` successfully finished | "
+                        f"Total keys: {self.profile.balance_keys}")
+        else:
+            logger.info(f"{self.session_name} | Daily mini-game `{mini_game.id}` successfully finished | "
+                        f"Bonus coins: {format_number(bonus_coins)} | Total balance: {format_number(self.profile.balance)}")
+
+        if daily_mini_game.remain_points > 0:
+            sleep_time = randint(10, 30)
+            logger.info(f"{self.session_name} | Sleep {sleep_time}s before next attempt in mini-game")
+            await self.sleep(delay=sleep_time)
+            await self.pass_mini_game(daily_mini_game)
 
     async def check_mini_games(self):
         promo_states = await self.web_client.get_promos()
