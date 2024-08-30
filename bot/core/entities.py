@@ -178,7 +178,8 @@ class DailyCipher:
 
 
 @dataclass
-class DailyKeysMiniGame:
+class DailyMiniGame:
+    id: str
     start_date: str
     level_config: str
     youtube_url: str
@@ -188,8 +189,10 @@ class DailyKeysMiniGame:
     remain_seconds_to_guess: float
     remain_seconds: float
     remain_seconds_to_next_attempt: float
+    remain_points: int
 
     def __init__(self, data: dict):
+        self.id = data["id"]
         self.start_date = data["startDate"]
         self.level_config = data["levelConfig"]
         self.youtube_url = data["youtubeUrl"]
@@ -199,6 +202,7 @@ class DailyKeysMiniGame:
         self.remain_seconds_to_guess = data["remainSecondsToGuess"]
         self.remain_seconds = data["remainSeconds"]
         self.remain_seconds_to_next_attempt = data["remainSecondsToNextAttempt"]
+        self.remain_points = data.get("remainPoints", 0)
 
 
 @dataclass
@@ -216,11 +220,11 @@ class Promo:
 @dataclass
 class Config:
     daily_cipher: DailyCipher
-    daily_keys_mini_game: list[DailyKeysMiniGame]
+    daily_keys_mini_game: list[DailyMiniGame]
 
     def __init__(self, data: dict):
         self.daily_cipher = DailyCipher(data=data["dailyCipher"])
-        self.daily_keys_mini_game = list(map(lambda x: DailyKeysMiniGame(data=x), data.get("dailyKeysMiniGame", [])))
+        self.daily_keys_mini_game = list(map(lambda x: DailyMiniGame(data=x), data.get("dailyKeysMiniGame", [])))
 
 
 class SleepReason(Enum):
