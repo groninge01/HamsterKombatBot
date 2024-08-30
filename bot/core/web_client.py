@@ -1,13 +1,14 @@
 import json as json_parser
 from enum import StrEnum
 from time import time
+from typing import Tuple
 
 import aiohttp
 from better_proxy import Proxy
 
 from bot.config import API_URL
 from bot.core.entities import AirDropTask, Boost, Upgrade, Profile, Task, DailyCombo, Config, AirDropTaskId, PromoState, \
-    Promo
+    Promo, DailyMiniGame
 from bot.core.headers import create_hamster_headers
 from bot.utils import logger
 from bot.utils.client import Client
@@ -129,14 +130,19 @@ class WebClient:
                                            json={'id': AirDropTaskId.CONNECT_TON_WALLET, 'walletAddress': wallet})
         return response.get('airdropTask', {}).get('isCompleted', False)
 
-    async def start_keys_minigame(self):
-        await self.make_request(Requests.START_KEYS_MINIGAME)
+    async def start_keys_minigame(self, mini_game_id: str):
+        await self.make_request(Requests.START_KEYS_MINIGAME, json={"miniGameId": mini_game_id})
 
-    async def claim_daily_keys_minigame(self, cipher: str) -> Profile:
-        response = await self.make_request(Requests.CLAIM_DAILY_KEYS_MINIGAME, json={'cipher': cipher})
+    async def claim_daily_keys_minigame(self, cipher: str, mini_game_id: str) -> tuple[Profile, DailyMiniGame | None, int]:
+        response = await self.make_request(Requests.CLAIM_DAILY_KEYS_MINIGAME, json={'cipher': cipher, "miniGameId": mini_game_id})
         if 'found' in response:
             response = response['found']
-        return Profile(data=response.get('clickerUser'))
+
+        profile = Profile(data=response.get('clickerUser'))
+        if "dailyKeysMiniGames" in response:
+            return profile, DailyMiniGame(data=response.get('dailyKeysMiniGames')), response.get("bonus", 0)
+        else:
+            return profile, None, response.get("bonus", 0)
 
     async def get_airdrop_tasks(self) -> list[AirDropTask]:
         response = await self.make_request(Requests.LIST_AIRDROP_TASKS)
